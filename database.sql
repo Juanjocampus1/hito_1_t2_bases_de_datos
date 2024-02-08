@@ -232,3 +232,147 @@ select distinct c.nombre, c.apellido
 from cliente c
 inner join pedido p on c.id_cliente = p.id_cliente
 where p.fecha_pedido >= date_sub(now(), interval 1 month );
+
+DELIMITER //
+
+create procedure insertarCliente(
+    in p_nombre varchar(50),
+    in p_apellido varchar(50),
+    in p_telefono int,
+    in p_email varchar(50),
+    in p_cuenta_bancaria int,
+    in p_direccion varchar(50)
+)
+begin
+    declare cliente_existente int;
+    select count(*) into cliente_existente from cliente where email = p_email;
+
+    if cliente_existente = 0 then
+        insert into cliente(nombre, apellido, telefono, email, cuenta_bancaria, direccion)
+        values (p_nombre, p_apellido, p_telefono, p_email, p_cuenta_bancaria, p_direccion);
+    else
+        select 'El cliente ya existe' as mensaje;
+    end if;
+end;
+
+DELIMITER ;
+
+call insertarCliente('Jose', 'Perez', 555555555, 'Jose@gmail.com', 111222333, 'Calle 567');
+
+DELIMITER //
+
+create procedure RealizarBackUpCliente()
+begin
+    declare backup_exist int;
+
+    select count(*) into backup_exist from information_schema.TABLES
+    where (TABLE_SCHEMA = 'CINE_ARTE_ATREZZO' and TABLE_NAME = 'cliente_backup');
+
+    if backup_exist = 0 then
+        create table cliente_backup as select * from cliente;
+    else
+        insert into cliente_backup select * from cliente;
+    end if;
+
+    insert into cliente_backup select * from cliente;
+
+    select  'Copia de seguridad de la tabla cliente realizada correctamente.' as mensaje;
+end;
+
+DELIMITER ;
+
+call RealizarBackUpCliente();
+
+CREATE PROCEDURE CrearPedido(
+    IN p_NombreCliente VARCHAR(50),
+    IN p_ApellidoCliente VARCHAR(50),
+    IN p_TelefonoCliente INT,
+    IN p_EmailCliente VARCHAR(50),
+    IN p_CuentaBancariaCliente INT,
+    IN p_DireccionCliente VARCHAR(50),
+    IN p_FechaPedido DATE,
+    IN p_FechaEntrega DATE,
+    IN p_FechaDevolucion DATE,
+    IN p_Estado VARCHAR(50),
+    IN p_NombreProducto VARCHAR(50),
+    IN p_DescripcionProducto VARCHAR(70),
+    IN p_PrecioProducto FLOAT,
+    IN p_StockProducto INT,
+    IN p_NombreTransportista VARCHAR(50),
+    IN p_ApellidoTransportista VARCHAR(50),
+    IN p_TelefonoTransportista VARCHAR(50),
+    IN p_EmailTransportista VARCHAR(50),
+    IN p_CuentaBancariaTransportista VARCHAR(50),
+    IN p_DireccionTransportista VARCHAR(50)
+)
+BEGIN
+    DECLARE cliente_id INT;
+    DECLARE pedido_id INT;
+    DECLARE producto_id INT;
+    DECLARE transportista_id INT;
+
+    -- Insertar nuevo cliente si no existe
+    INSERT INTO cliente (nombre, apellido, telefono, email, cuenta_bancaria, direccion)
+    VALUES (p_NombreCliente, p_ApellidoCliente, p_TelefonoCliente, p_EmailCliente, p_CuentaBancariaCliente, p_DireccionCliente)
+    ON DUPLICATE KEY UPDATE id_cliente = LAST_INSERT_ID(id_cliente);
+
+    -- Obtener el ID del cliente
+    SET cliente_id = LAST_INSERT_ID();
+
+    -- Insertar nuevo producto si no existe
+    INSERT INTO producto (nombre, descripcion, precio, stock)
+    VALUES (p_NombreProducto, p_DescripcionProducto, p_PrecioProducto, p_StockProducto)
+    ON DUPLICATE KEY UPDATE id_producto = LAST_INSERT_ID(id_producto);
+
+    -- Obtener el ID del producto
+    SET producto_id = LAST_INSERT_ID();
+
+    -- Insertar nuevo transportista si no existe
+    INSERT INTO trasportista (nombre, apellido, telefono, email, cuenta_bancaria, direccion)
+    VALUES (p_NombreTransportista, p_ApellidoTransportista, p_TelefonoTransportista, p_EmailTransportista, p_CuentaBancariaTransportista, p_DireccionTransportista)
+    ON DUPLICATE KEY UPDATE id_trasportista = LAST_INSERT_ID(id_trasportista);
+
+    -- Obtener el ID del transportista
+    SET transportista_id = LAST_INSERT_ID();
+
+    -- Insertar nuevo pedido
+    INSERT INTO pedido (fecha_pedido, fecha_entrega, fecha_devolucion, estado, id_cliente)
+    VALUES (p_FechaPedido, p_FechaEntrega, p_FechaDevolucion, p_Estado, cliente_id);
+
+    -- Obtener el ID del pedido
+    SET pedido_id = LAST_INSERT_ID();
+
+    -- Insertar detalle del pedido
+    INSERT INTO detalle_pedido (id_pedido, id_producto, cantidad)
+    VALUES (pedido_id, producto_id, 1);
+
+    -- Insertar asociación de pedido con transportista
+    INSERT INTO pedido_transportista (id_pedido, id_trasportista)
+    VALUES (pedido_id, transportista_id);
+
+    -- Devolver datos del nuevo pedido
+    SELECT * FROM pedido WHERE id_pedido = pedido_id;
+END;
+
+CALL CrearPedido(
+    'zazu',
+    'gomez',
+    656565656, -- Ejemplo de un número de teléfono
+    'zazu@cliente.com',
+    12345, -- Ejemplo de cuenta bancaria del cliente
+    'callesita nº22', -- Dirección del cliente
+    '2024-02-07', -- Fecha de pedido
+    '2024-02-10', -- Fecha de entrega
+    '2024-02-15', -- Fecha de devolución
+    'En proceso', -- Estado del pedido
+    'aviones de goma',
+    'aviones de goma suave',
+    99.99, -- Precio del producto
+    100, -- Stock del producto
+    'juan',
+    'marin',
+    '123456789', -- Ejemplo de un número de teléfono del transportista
+    'juan@transportista.com',
+    '1234', -- Ejemplo de cuenta bancaria del transportista
+    'callesita nº23' -- Dirección del transportista
+);
