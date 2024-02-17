@@ -8,7 +8,7 @@ create table cliente(
                         telefono int,
                         email varchar(50),
                         cuenta_bancaria int,
-                        direccion varchar(50)
+    direccion varchar(50)
 );
 
 drop table cliente;
