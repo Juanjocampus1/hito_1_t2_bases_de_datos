@@ -376,3 +376,42 @@ CALL CrearPedido(
     '1234', -- Ejemplo de cuenta bancaria del transportista
     'callesita nº23' -- Dirección del transportista
 );
+
+
+-- CONSULTAS
+-- 1. Obtener el total gastado por cada cliente
+
+SELECT c.nombre, c.apellido, SUM(f.monto) AS total_gastado
+FROM cliente c
+         INNER JOIN pedido p ON c.id_cliente = p.id_cliente
+         INNER JOIN factura f ON p.id_pedido = f.id_pedido
+GROUP BY c.nombre, c.apellido;
+
+-- 2. Información sobre los productos más vendidos:
+
+SELECT p.nombre AS producto_mas_vendido, SUM(dp.cantidad) AS total_vendido
+FROM producto p
+         INNER JOIN detalle_pedido dp ON p.id_producto = dp.id_producto
+GROUP BY p.nombre
+ORDER BY SUM(dp.cantidad) DESC;
+
+-- 3. Número de pedidos entregados por cada transportista:
+
+SELECT t.nombre AS transportista, COUNT(p.id_pedido) AS num_pedidos_entregados
+FROM trasportista t
+         INNER JOIN pedido_transportista pt ON t.id_trasportista = pt.id_trasportista
+         INNER JOIN pedido p ON pt.id_pedido = p.id_pedido
+WHERE p.estado = 'Entregado'
+GROUP BY t.nombre;
+
+-- 4. Monto total facturado en un rango de fechas específico:
+
+SELECT SUM(f.monto) AS monto_total_facturado
+FROM factura f
+         INNER JOIN pedido p ON f.id_pedido = p.id_pedido
+WHERE p.fecha_pedido BETWEEN '2024-01-01' AND '2024-12-31';
+
+-- 5. precio promedio de los productos disponibles
+
+SELECT AVG(precio) AS precio_promedio
+FROM producto;
